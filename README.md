@@ -1,6 +1,5 @@
-# myLeetCode
-## 这是一份文档
-LeetCode的练习代码仓库
+# LeetCode代码练习手册
+## 基于LeetCode的刷题笔记。
 
 > 这是第一级引用。
 >
