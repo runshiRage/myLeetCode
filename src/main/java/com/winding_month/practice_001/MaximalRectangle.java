@@ -60,7 +60,7 @@ public class MaximalRectangle {
         int maxArea = 0;
 
         for(int i=0; i<m; i++) {
-            Math.min(maxArea, largestRectangleArea(height[i]));
+            maxArea = Math.max(maxArea, largestRectangleArea(height[i]));
         }
 
         return maxArea;
