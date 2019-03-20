@@ -1,5 +1,8 @@
 package com.winding_month.practice_001;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * 构建二叉树
  *                 1
@@ -27,12 +30,87 @@ package com.winding_month.practice_001;
  */
 public class GenerateTree {
 
+    public static void main(String[] args) {
+        GenerateTree gt = new GenerateTree();
+        int[] inorder = new int[]{4,2,5,1,6,3,7};
+        int[] postorder = new int[]{4,5,2,6,7,3,1};
+        TreeNode tn = gt.generate(inorder, postorder);
+    }
+
+    Map<Integer, Integer> m = new HashMap<Integer, Integer>();
     /**
      *
      * @param inorder   中序
      * @param postorder   后序
      */
-    private void generate(int[] inorder, int[] postorder) {
-        
+    private TreeNode generate(int[] inorder, int[] postorder) {
+
+        /** 树不存在 */
+        if(postorder == null || postorder.length == 0) {
+               return null;
+        }
+
+        for(int i = 0; i < inorder.length; i++) {
+            m.put(inorder[i], i);
+        }
+
+        return build(inorder, 0, inorder.length - 1,
+            postorder, 0, postorder.length - 1);
+
+
+    }
+
+    private TreeNode build(int[] inorder, int inStart, int inEnd,
+                           int[] postorder, int postStart, int postEnd) {
+
+        if(inStart > inEnd || postStart > postEnd) {
+            return null;
+        }
+
+        TreeNode root = new TreeNode();
+        root.setData(postorder[postEnd]);
+
+        int mid = m.get(postorder[postEnd]);
+        int distance = mid - inStart;
+
+        root.setLeftNode(
+                build(inorder, inStart, mid - 1,
+                    postorder, postStart, postStart + distance - 1));
+
+        root.setRightNode(
+                build(inorder, mid + 1, inEnd,
+                    postorder, postStart + distance , postEnd - 1));
+
+        return root;
+    }
+
+    class TreeNode {
+        private Object data;
+        private TreeNode leftNode;
+        private TreeNode rightNode;
+
+        public Object getData() {
+            return data;
+        }
+
+        public void setData(Object data) {
+            this.data = data;
+        }
+
+        public TreeNode getLeftNode() {
+            return leftNode;
+        }
+
+        public TreeNode getRightNode() {
+            return rightNode;
+        }
+
+        public void setLeftNode(TreeNode leftNode) {
+            this.leftNode = leftNode;
+        }
+
+        public void setRightNode(TreeNode rightNode) {
+            this.rightNode = rightNode;
+        }
     }
 }
