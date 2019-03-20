@@ -32,20 +32,41 @@ public class LargestRectangleInHistogram {
          *    0    1    2    3    4    5    6    7
          */
         int[] arr = new int[]{2,1,5,6,2,3};
+        LargestRectangleInHistogram lr = new LargestRectangleInHistogram();
+
+//        System.out.println(lr.getArr(arr));
+
+        int area = lr.largestRectangleArea(arr);
+        System.out.println("largestRectangleArea : [" + area + "]");
+
+
+    }
+
+    /**
+     * 求直方图最大面积   单调栈的运用
+     */
+    private int largestRectangleArea(int[] arr) {
+        int sum = 0;
+        int i = 0;
 
         Stack<Integer> stack = new Stack<Integer>();
 
-//        while(i < arr.length) {
-//            if(stack.empty() || arr[i] > arr[stack.peek()]) {
-//                                
-//            }
-//        }
+        /** 插入0是为了stack遍历的完整性 */
+        stack.push(0);
 
-        LargestRectangleInHistogram lr = new LargestRectangleInHistogram();
-        System.out.println(lr.getArr(arr));
-        
+        /** 注意i的变化 */
+        while(i < arr.length) {
+            if(stack.empty() || arr[i] > arr[stack.peek()]) {
+                stack.push(i);
+                i++;
+            } else {
+                int t = stack.pop();
+                sum = Math.max(sum, arr[t] * (stack.empty()? i : i-stack.peek()-1));
+            }
+        }
+        return sum;
     }
-    
+
     /**
      * 
      */
