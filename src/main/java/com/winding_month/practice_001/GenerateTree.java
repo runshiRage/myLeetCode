@@ -32,18 +32,20 @@ public class GenerateTree {
 
     public static void main(String[] args) {
         GenerateTree gt = new GenerateTree();
+        int[] preorder = new int[]{1,2,4,5,3,6,7};
         int[] inorder = new int[]{4,2,5,1,6,3,7};
         int[] postorder = new int[]{4,5,2,6,7,3,1};
-        TreeNode tn = gt.generate(inorder, postorder);
+        TreeNode tn = gt.generateForPost(inorder, postorder);
+        TreeNode tn1 = gt.generateForPre(preorder, inorder);
     }
 
     Map<Integer, Integer> m = new HashMap<Integer, Integer>();
     /**
-     *
+     * 通过后序遍历和中序遍历数组  构造二叉树
      * @param inorder   中序
      * @param postorder   后序
      */
-    private TreeNode generate(int[] inorder, int[] postorder) {
+    private TreeNode generateForPost(int[] inorder, int[] postorder) {
 
         /** 树不存在 */
         if(postorder == null || postorder.length == 0) {
@@ -82,6 +84,52 @@ public class GenerateTree {
                     postorder, postStart + distance , postEnd - 1));
 
         return root;
+    }
+
+
+    Map<Integer, Integer> m1 = new HashMap<Integer, Integer>();
+    /**
+     * 通过前序遍历和中序遍历数组构造二叉树
+     * @param preorder
+     * @param inorder
+     * @return
+     */
+    private TreeNode generateForPre(int[] preorder, int[] inorder) {
+
+        if(preorder == null || preorder.length == 0) {
+            return null;
+        }
+
+        for(int i=0; i<inorder.length; i++) {
+            m1.put(inorder[i], i);
+        }
+
+        return buildPre(inorder, 0, inorder.length - 1,
+                preorder, 0, preorder.length - 1);
+    }
+
+    private TreeNode buildPre(int[] inorder, int inS, int inE,
+                           int[] preorder, int preS, int preE) {
+
+        if(inS > inE || preS > preE) {
+            return null;
+        }
+
+        TreeNode rootPre = new TreeNode();
+        rootPre.setData(preorder[preS]);
+
+        int mid = m1.get(preorder[preS]);
+        int num = mid - inS;
+
+        rootPre.setLeftNode(
+                buildPre(inorder, inS, mid - 1,
+                        preorder, preS + 1, preS + num));
+
+        rootPre.setRightNode(
+                buildPre(inorder, mid + 1, inE,
+                        preorder, preS + num + 1 , preE));
+
+        return rootPre;
     }
 
     class TreeNode {
