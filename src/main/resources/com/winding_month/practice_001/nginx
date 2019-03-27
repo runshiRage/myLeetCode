@@ -1,0 +1,57 @@
+nginx 笔记
+
+> nginx 准备工作
+1) 必要的软件安装
+    linux操作系统
+    gcc编译器  命令：yum install -y gcc
+    g++编译器  命令：yum install -y gcc-c++
+    如果在nginx.conf中使用的正则表达式，需要安装PCRE库
+    命令：yum install -y pcre pcre-devel.  pcre-devel是使用PCRE做二次开发所需要的。
+    如果在nginx.conf中配置了 gzip on  需要安装 zlib库
+    命令： yum install -y zlib zlib-devel
+    同理  OpenSSL库   yum install -y openssl openssl-devel
+
+2) 目录准备
+    nginx源码的存放目录，存放nginx源码和第三方以及我们自己的模块资源
+    nginx编译产生的中间文件目录   使用configure命令会自动在源码目录下面新建一个objs
+    部署目录，一般在 /usr/local/nginx
+    日志目录  自定义吧（怎么定义？？？）
+
+
+编译安装nginx
+    进入nginx-1.0.14目录
+
+    ./configure
+    make
+    make install
+
+    - confifure 命令做了大量幕后工作，检测操作系统内核和已安装的软件，参数的解析，
+    中间目录的生成以及各种参数生成一些C源码文件，Makefile文件等
+    - make 根据 configure 生成的Makefile文件进行编译nginx工程，并生成目标文件和二进制文件
+    - make install 根据 configure 执行时的参数将nginx部署到指定的安装目录，
+    包括相关目录的建立和二进制文件，配置文件的复制
+
+
+    configure 参数
+        - 路径相关的参数
+            [--prefix=PATH] nginx安装部署后的根目录，默认是 /usr/local/nginx
+            [--sbin-path=PATH] 可执行文件的放置目录  默认<prefix>/sbin/nginx
+            [--conf-path=PATH] 配置文件的放置目录  默认<prefix>/conf/nginx.conf
+            [--pid-path=PATH] pid文件存放路径，这个文件里仅以ASCII码存放nginx master
+                的进程ID，在使用命令 nginx -s reload 通过读取这个id，向对应的master进程
+                发送信号，才能对运行中的nginx服务产生作用
+            [--builddir=DIR] configure执行与编译过程中产生的临时文件存放目录，
+                Makefile,C源文件，目标文件，可执行文件
+
+        -编译相关参数
+            [--with-cc=PATH] C编译器路径
+            [--with-cpp=PATH] C预编译器路径
+            [--with-cc-opt=OPTIONS]   ...
+            [--with-ld-opt=OPTIONS]   ...
+            [--with-cpu-opt=CPU] 指定cpu处理器架构  有一系列的可选项
+
+        -依赖软件相关参数
+            ...
+
+        -模块相关参数
+
