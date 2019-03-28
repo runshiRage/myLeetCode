@@ -5,6 +5,10 @@ import java.util.Arrays;
 /**
  * 图的搜索：
  * 广度优先算法  BFS  需要消耗大量内存  只适用与深度不深且子节点不多的树  能查找最短路径
+ *      广度优先搜索旨在面临一个路口时，把所有的岔路口都记下来，
+ *      然后选择其中一个进入，然后将它的分路情况记录下来，
+ *      然后再返回来进入另外一个岔路，并重复这样的操作
+ *
  * 深度优先算法  DFS  占用内存小  但不能查找最短路径
  * TODO  待完善的算法  根本没体现图的用处
  */
@@ -16,7 +20,7 @@ public class BinaryTreeLevelOrderTraversal {
     public static void main(String[] args) {
 
         int[][] graph = {{1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {100,14,15,34}};
-        int[][] used = {{0,0,0,0}, {0,0,0,0}, {0,0,0,0}, {0,0,0,0}};
+        int[][] used = new int[4][4];
 
         BinaryTreeLevelOrderTraversal btlot = new BinaryTreeLevelOrderTraversal();
         btlot.DFSFindTarget(graph, used, 0, 0, 34);
