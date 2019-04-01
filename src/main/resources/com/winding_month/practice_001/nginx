@@ -189,8 +189,38 @@ nginx 笔记
 
 
         -文件路径的定义
+            (一) 以root方式设置资源路径
+                root path  使用的配置块：http server location if
+                例子： location /download/ {
+                        root /index/test.html
+                    }
+
+            (二) 以alias方式设置资源路径
+                alias path   使用配置块 location
+
+                如果有一个请求的URI是/conf/nginx.conf， 而用户实际想访问的文件
+                在usrlocal/nginx/conf/nginx.conf， 那么想要使用alias来进行设置的话， 可以采用如下方式：
+                    location conf {
+                        alias usr/local/nginx/conf/;
+                    }
+                如果用root设置， 那么语句如下所示：
+                    location conf {
+                        root usr/local/nginx/;
+                    }
 
         -内存及磁盘资源的分配
+            client_body_in_file_only  on|clean|off
+            client_body_in_single_buffer  on|off
+            client_header_buffer_size  size
+            large_client_header_buffers number size
+            client_body_buffer_size size
+            connection_pool_size
+                nginx对于每个建立成功的tcp会有一个预设的内存，size就是内存池的大小
+            request_pool_size
+                同上，每个请求也会分配内存
+            
+            TCP连接关闭时会销毁connection_pool_size指定的连接内存池，
+            HTTP请求结束时会销毁request_pool_size指定的HTTP请求内存池
 
         -网络连接的设置
 
@@ -203,4 +233,72 @@ nginx 笔记
         -对客户端请求的特殊处理
 
 
+        nginx  中 对buffer的设置
+        client_header_buffer_size  一个buffer多大
+        large_client_header_buffers  一组buffer   4 8k  表示有4个8k的buffer
 
+        nginx会将整个请求头都放在一个buffer里面，
+        这个buffer的大小通过配置项client_header_buffer_size来设置，
+        如果用户的请求头太大，这个buffer装不下，那nginx就会重新分配一个新的更大的buffer来装请求头，
+        这个大buffer可以通过large_client_header_buffers来设置，这个large_buffer这一组buffer，
+        比如配置4 8k，就是表示有四个8k大小的buffer可以用。
+
+        注意，为了保存请求行或请求头的完整性，一个完整的请求行或请求头，需要放在一个连续的内存里面，
+        所以，一个完整的请求行或请求头，只会保存在一个buffer里面。这样，如果请求行大于一个buffer的大小，就会返回414错误，
+        如果一个请求头大小大于一个buffer大小，就会返回400错误。
+        在了解了这些参数的值，以及nginx实际的做法之后，在应用场景，我们就需要根据实际的需求来调整这些参数，来优化我们的程序了
+
+        lingering_close  延迟关闭  当nginx要关闭连接时，并非立即关闭连接，
+        而是先关闭tcp连接的写，在等待一段时间后关闭连接的读。
+
+
+
+        扩展知识： HTTP长连接、短连接究竟是什么？
+        本质上是TCP长连接和端连接！
+        TCP长连接是怎么实现的？  心跳
+
+        nginx location机制
+        location[ = | ~ | ~* | ^~ | @ ]/uri/ {...}
+        先最长前缀匹配，记录匹配到的值，然后进行正则匹配，如果正则匹配到  使用正则匹配，否则使用之前记录的最长匹配
+        如果有设置 ^~ 参数，就只用最长匹配。
+        =  精确匹配
+        ~  区分大小写正则匹配
+        ~* 不区分大小写正则匹配
+        ^~ 不进行正则匹配
+        @  仅用于nginx内部请求之间的重定向
+
+
+        nginx 配置下载目录
+        在原有的nginx配置文件中添加location模块
+
+
+
+============================================================
+        nginx请求的11个阶段
+
+        typedef enum {
+            ngx_http_post_read_phase = 0;
+            ngx_http_server_rewrite_phase
+            ngx_http_find_config_phase         // 根据uri寻找匹配的location块配置项
+            ngx_http_rewrite_phase
+            ngx_http_post_rewrite_phase
+
+            ngx_http_preaccess_phase           // 下一阶段之前的准备
+
+            ngx_http_access_phase              // 让http模块判断  是否让请求进入nginx服务器
+            ngx_http_post_access_phase         // 向用户发送拒绝服务错误码，响应上一阶段的拒绝
+
+            ngx_http_try_files_phase
+            ngx_http_content_phase             // 处理请求内容阶段   大部分http模块介入这个阶段
+
+            ngx_http_log_phase
+        }
+
+
+
+        虚拟主机
+            基于IP
+            基于域名
+
+
+        负载均衡  反向代理
