@@ -396,11 +396,29 @@ nginx 笔记
         }
 
 
+        --preaccess 阶段 限制连接的命令    limit_req  --->  limit_conn
+            定义共享内存的大小  limit_conn_zone key zone=name:size;
+            只在http中使用
+
+            限制并发连接数  limit_conn zone number (这里的zone就是上面定义的 zone=name)
+            使用范围在  http server location
+
+            limit_conn_log_level  info|notice|varn|error   日志级别
+
+            limit_conn_status  code   连接超过限制时向客户端返回的错误码
+
+        -- access 模块   控制请求可以继续向下访问  针对ip等做限制
+            allow   ip，域名等
+            deny    ip，域名等
+
+
+
+
     GoAccess  日志可视化工具
 
     将站点变为https
         yun install python2-certbot-nginx
-        为域名申请证书
+
         certbot --nginx [--nginx-server-root=PATH 指定conf目录，默认为conf默认路径] -d www.liurunshi.com
 
         信号：
@@ -416,3 +434,16 @@ nginx 笔记
         slab内存管理
         动态模块管理   编译模块进入nginx时，指定模块时动态模块
         在nginx中调用该模块的地方只是占位，具体的逻辑需要去动态库中去找，所以动态编译nginx时会多出一个文件夹，存放动态库的。
+
+
+
+
+
+
+=============================================================
+    nginx基础数据结构
+        ngx_str_t:
+            typedef struct {
+                size_t  len;
+                u_char  *data;
+            } ngx_str_t;
