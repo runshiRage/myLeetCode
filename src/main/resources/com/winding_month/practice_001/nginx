@@ -218,21 +218,122 @@ nginx 笔记
                 nginx对于每个建立成功的tcp会有一个预设的内存，size就是内存池的大小
             request_pool_size
                 同上，每个请求也会分配内存
-            
+
             TCP连接关闭时会销毁connection_pool_size指定的连接内存池，
             HTTP请求结束时会销毁request_pool_size指定的HTTP请求内存池
 
         -网络连接的设置
+            client_header_timeout time  获取HTTP头部的超时时间
+            client_body_timeout time    获取HTTP包体的超时时间
+            send_timeout time           发送响应的超时时间
+
+
 
         -MIME类型的设置
+            语法 type{...}
+                配置块：http server location
 
-        -对客户端请求的限制
+
+                默认MIME type
+                语法：default_type MIME-type
+                默认：default_type text/plain
+                找不到  对应的mime 类型映射会到这个默认的映射中来
+
+        -对客户端请求的限制的配置项
+            1.按http方法名限制用户请求
+            语法：limit_except method {...}
+            配置块：location
+            limit_except GET {
+                allow 192.168.1.0/32;
+                deny all;
+            }
+            注意， 允许GET方法就意味着也允许HEAD方法。 因此， 上面这段代码表示的是禁止
+            GET方法和HEAD方法， 但其他HTTP方法是允许的。
+
+            2.http请求包体的最大值
+            client_max_body_size size
+
+            3.对请求限速
+            limit_rate speed  如：limit_rate 0; 此配置是对客户端限制每秒传输的字节数，默认为0，表示不限速
+
+            4.limit_rate_after
+            limit_rate_after 1m  配置表示nginx客户端的响应长度超过limit_rate_after后才打开限速
+
 
         -文件操作的优化
+            1.sendfile 系统的调用
+            语法：sendfile on|off
+            默认：sendfile off  默认是关闭的
+
+     ???    2.AIO系统调用
+            aio on|off  默认关闭  与sendfile是互斥
 
         -对客户端请求的特殊处理
+            1.忽略不合法的HTTP头部  ignore_invalid_headers on|off  默认 on
+                设置为off时，出现不合法头部会返回400错误
+            2.头部是否允许下划线  underscores_in_headers on|off  默认 off  表示头部不允许带 ‘_’
+            3.nerge_slashes on|off  例如：/test///a.txt
+                如果  on ===> location/test/a.txt
+                如果 off ===> location/test///a.txt
+            4.DNS解析地址
+                resolver address...;  设置dns名字解析服务器的地址   表示去那台服务器上去进行dns解析
+                超时时间的配置  resolver_timeout time
 
 
+    -负载均衡的基本配置
+        1.upstream 块
+        语法 upstream name {...}
+        配置块 http
+
+        upstream 块中定义了上游服务器的集群 ，便于反向代理中的 proxy_pass 使用
+            upstream backend {
+                server backend1.example.com;
+                server backend2.example.com;
+                server backend3.example.com;
+            }
+            server {
+                location / {
+                    proxy_pass http://backend;
+                }
+            }
+
+        2. server 块
+        server name [param]
+        配置块 upstream  用于指定一台上游服务器的名字，这个名字可以时域名，ip端口等
+        还能设置一些参数
+            参数：weight=number  配置向这个服务器转发的权重  默认是 1
+                 fail_timeout=time 表示该事件端内转发失败多少次后就认为上游服务器暂时不可用  默认10s
+                 max_fails=number  配合 fail_timeout  表示转发失败超过多少次后就认为服务器不可用  默认为1， =0时，不检查次数
+        upstream backend {
+            server backend1.example.com weight=5;
+            server 127.0.0.1:8080 max_fails=3 fail_timeout=30s;
+            server unix:/tmp/backend3;
+        }
+
+        3. ip_hash 不可与 weight 同时使用
+        upstream backend {
+            ip_hash;
+            server backend1.example.com;
+            server backend2.example.com;
+            server backend3.example.com down;
+            server backend4.example.com;
+        }
+
+        4. 记录日志时支持的变量
+            $upstream_addr                处理请求的上游服务器地址
+            $upstream_cache_status        表示是否命中缓存
+            $upstream_status              上游服务器返回的HTTP响应码
+            $upstream_response_time       上游服务器的响应时间，精确到毫秒
+            $upstream_http_$HEADER        HTTP的头部 如 upstream_http_host
+
+
+    -反向代理的基本配置
+        1. proxy_pass url
+        2. proxy_method method
+        3. proxy_hide_header 任意指定那些http头部不被转发  proxy_hide_header Cache-Control;
+        4. proxy_pass_header 任意指定那些http头部能被转发
+
+=======================================================================
         nginx  中 对buffer的设置
         client_header_buffer_size  一个buffer多大
         large_client_header_buffers  一组buffer   4 8k  表示有4个8k的buffer
@@ -291,10 +392,54 @@ nginx 笔记
         }
 
 
+        --preaccess 阶段 限制连接的命令    limit_req  --->  limit_conn
+            定义共享内存的大小  limit_conn_zone key zone=name:size;
+            只在http中使用
 
-        虚拟主机
-            基于IP
-            基于域名
+            限制并发连接数  limit_conn zone number (这里的zone就是上面定义的 zone=name)
+            使用范围在  http server location
+
+            limit_conn_log_level  info|notice|varn|error   日志级别
+
+            limit_conn_status  code   连接超过限制时向客户端返回的错误码
+
+        -- access 模块   控制请求可以继续向下访问  针对ip等做限制
+            allow   ip，域名等
+            deny    ip，域名等
 
 
-        负载均衡  反向代理
+
+
+    GoAccess  日志可视化工具
+
+    将站点变为https
+        yun install python2-certbot-nginx
+
+        certbot --nginx [--nginx-server-root=PATH 指定conf目录，默认为conf默认路径] -d www.liurunshi.com
+
+        信号：
+            master
+            worker
+            命令行
+
+        优雅关闭主要是http请求   worker_shutdown_timeout
+        TCP UDP SOCKET等不知道什么时候结束
+
+        epoll  网络事件收集器  就是讲网络事件添加到内核的事件队列中，等待事件处理程序来获取事件并处理
+
+        slab内存管理
+        动态模块管理   编译模块进入nginx时，指定模块时动态模块
+        在nginx中调用该模块的地方只是占位，具体的逻辑需要去动态库中去找，所以动态编译nginx时会多出一个文件夹，存放动态库的。
+
+
+
+
+
+
+=============================================================
+    nginx基础数据结构
+        ngx_str_t:
+            typedef struct {
+                size_t  len;
+                u_char  *data;
+            } ngx_str_t;
