@@ -1,0 +1,16 @@
+数据类型
+    String  是一个key-value 结构  value可以时string number byte
+    setnx  可以做分布式锁   存入一个不存在的key  如果存在则返回存储不成功（返回0）
+
+    hash  存在的意义  减少内存的占用
+
+    list  从左  0 开始
+          从右 -1 开始
+
+    set  集合  可以实现 点赞  签到  like
+    集合运算  交集 并集 差集
+        sinter key [key...]   交集
+        sunion key [key...]   并集
+        sdiff key [key...]    差集
+
+    zset  跟list一样的排序编号

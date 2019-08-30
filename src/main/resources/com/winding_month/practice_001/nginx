@@ -1,0 +1,445 @@
+nginx 笔记
+
+> nginx 准备工作
+1) 必要的软件安装
+    linux操作系统
+    gcc编译器  命令：yum install -y gcc
+    g++编译器  命令：yum install -y gcc-c++
+    如果在nginx.conf中使用的正则表达式，需要安装PCRE库
+    命令：yum install -y pcre pcre-devel.  pcre-devel是使用PCRE做二次开发所需要的。
+    如果在nginx.conf中配置了 gzip on  需要安装 zlib库
+    命令： yum install -y zlib zlib-devel
+    同理  OpenSSL库   yum install -y openssl openssl-devel
+
+2) 目录准备
+    nginx源码的存放目录，存放nginx源码和第三方以及我们自己的模块资源
+    nginx编译产生的中间文件目录   使用configure命令会自动在源码目录下面新建一个objs
+    部署目录，一般在 /usr/local/nginx
+    日志目录  自定义吧（怎么定义？？？）
+
+
+编译安装nginx
+    进入nginx-1.0.14目录
+
+    ./configure
+    make
+    make install
+
+    - confifure 命令做了大量幕后工作，检测操作系统内核和已安装的软件，参数的解析，
+    中间目录的生成以及各种参数生成一些C源码文件，Makefile文件等
+    - make 根据 configure 生成的Makefile文件进行编译nginx工程，并生成目标文件和二进制文件
+    - make install 根据 configure 执行时的参数将nginx部署到指定的安装目录，
+    包括相关目录的建立和二进制文件，配置文件的复制
+
+
+    configure 参数
+        - 路径相关的参数
+            [--prefix=PATH] nginx安装部署后的根目录，默认是 /usr/local/nginx
+            [--sbin-path=PATH] 可执行文件的放置目录  默认<prefix>/sbin/nginx
+            [--conf-path=PATH] 配置文件的放置目录  默认<prefix>/conf/nginx.conf
+            [--pid-path=PATH] pid文件存放路径，这个文件里仅以ASCII码存放nginx master
+                的进程ID，在使用命令 nginx -s reload 通过读取这个id，向对应的master进程
+                发送信号，才能对运行中的nginx服务产生作用
+            [--builddir=DIR] configure执行与编译过程中产生的临时文件存放目录，
+                Makefile,C源文件，目标文件，可执行文件
+
+        -编译相关参数
+            [--with-cc=PATH] C编译器路径
+            [--with-cpp=PATH] C预编译器路径
+            [--with-cc-opt=OPTIONS]   ...
+            [--with-ld-opt=OPTIONS]   ...
+            [--with-cpu-opt=CPU] 指定cpu处理器架构  有一系列的可选项
+
+        -依赖软件相关参数
+            ...
+
+        -模块相关参数
+            除了少量的核心代码外，nginx完全是由各种功能模块组成的，这些模块会根据不同的参数决定自己的行为。
+            - 事件模块
+                [--with-rtsig_module]  ...？
+                [--with-select_module]  select事件驱动
+                [--without-select_module] 不使用select事件驱动
+                [--with-poll_module]  poll事件驱动
+                [--without-poll_module] 不使用poll事件驱动
+                [--with-aio_module]   默认不使用
+
+            - 默认编译进入nginx的http模块
+                ...
+
+            - 默认不会编辑进入nginx的http模块
+                [--with-http_ssl_module] 使nginx支持https服务，前提：安装了OpenSSL
+                [--with-http_realip_module] 可以从客户端请求的header（X-Real-IP或X-Forwarded-For）
+                    获取真正的客户端IP
+                [--with-http_addition_module] 返回客户端的包体头或尾部增加内容
+                [--with-http_xslt_module] 我们使用xslt将接口中的xml接口转换成html结构的数据输出到页面中
+                    这个模块能对xml进行xsl渲染，前提：libxml2库 和 libxslt库
+                [--with-http_sub_module] 能在nginx返回给客户端的http响应中将指定的字符串替换为直接需要的字符串
+
+
+            - 邮件代理服务器相关的mail模块
+                ...
+
+            - 其他模块
+                [--with-debug] 开发模式 debug
+                [--add-module=PATH] 当在nginx里加入第三方模块时，通过参数指定第三方模块的路径
+                [--without-http] 禁用HTTP服务器
+                [--without-http-cache] 禁用HTTP服务器的缓存Cache特性
+                [--with-file-aio] 异步IO处理磁盘文件
+                [--with-ipv6]  支持ip6
+                [--user=USER] 指定nginx worker 进程运行时所属用户  （不要设置为root）
+                [--group=GROUP] 指定nginx worker 进程运行所属的组
+
+        - configure 命令执行成功会产生objs文件夹
+            objs
+                ngx_auto_headers.h
+                autoconf.err
+                ngx_auto_config.h
+                ngx_modules.c 是一个关键文件  用来定义ngx_modules数组的，指明了每个模块在nginx中的优先级（先后顺序）
+                src
+                    core
+                    event
+                        modules
+                    os
+                        unix
+                        win32
+                    http
+                        modules
+                            perl
+                    mail
+                    misc
+                Makefile
+
+        - nginx 命令行控制
+            /usr/local/nginx/sbin/nginx  使用默认的配置文件启动
+            /usr/local/nginx/sbin/nginx -c tmpnginx.conf   指定配置文件启动nginx
+
+            /usr/local/nginx/sbin/nginx -g "pid varnginx/test.pid"
+                通过-g参数临时指定一下全局配置项，上面 pid文件写到 varnginx/test.pid 中
+                -g 指定的参数不能和默认路径下的nginx.conf 冲突，否则无法启动
+                还有一个是执行其他命令时也要把 -g参数带上，否则会出现配置项不匹配的情形
+                例如：usr/local/nginx/sbin/nginx -g "pid varnginx/test.pid;" -s stop
+
+            /usr/local/nginx/sbin/nginx -s stop  快速关闭nginx
+            如果希望nginx服务正常处理完当前请求在停止服务，使用 /usr/local/nginx/sbin/nginx -s quit
+
+            /usr/local/nginx/sbin/nginx -s reload  重载配置文件
+
+
+    - nginx的配置
+
+
+    - nginx服务的基本配置
+        几个核心模块和一个时间类模块 所需要的配置项称之为基本配置
+
+        -优化的性能的配置项
+            nginx worker 进程个数   配置在master/worker运行方式下，worker的进程个数
+            语法： worker_process number
+            默认： worker_process 1
+
+            绑定nginx worker 进程到指定的CPU内核
+            语法：worker_cpu_affinity cpumask[cpumask...]
+            如果有4颗CPU，就可以进行如下配置
+            worker_processes 4;
+            worker_cpu_affinity 1000 0100 0010 0001;
+
+            SSL硬件加速
+            语法：ssl_engine device;
+            如果服务器上有SSL硬件加速设备，那么就可以进行配置以加快SSL协议的处理速度，
+            查看有没有SSL硬件加速设备，使用OpenSSL命令 openssl engine -t
+
+            nginx worker 进程优先级设置
+            语法：worker_priority number   number 取值范围{-20 ~ 19}  -20是最高优先级
+            默认：worker_priority 0
+
+        -事件类配置项
+            是否打开 accept 锁
+            语法：accept_mutex [on|off]  默认是打开的  负载均衡锁
+
+            使用accept锁后到真正建立连接之间的延迟时间
+            语法： accept_mutex_delay Nms;
+            默认： accept_mutex_delay 500ms;
+            在使用accept锁后， 同一时间只有一个worker进程能够取到accept锁。 这个accept锁不是
+            阻塞锁， 如果取不到会立刻返回。 如果有一个worker进程试图取accept锁而没有取到， 它至
+            少要等accept_mutex_delay定义的时间间隔后才能再次试图取锁
+
+            每个worker的最大连接数
+            语法： worker_connections number;
+            定义每个worker进程可以同时处理的最大连接数
+
+    -用http核心模块配置一个静态Web服务器 [ngx_http_core_module] 从帮助理解的层面进行划分：
+
+        -虚拟主机与请求的分发
+            listen address:port [default(deprecated in 0.8.21)
+                |default_server|[backlog=num|rcvbuf=size|sndbuf=size
+                |accept_filter=filter|deferred|bind|ipv6only=[on|off]|ssl]]
+            default/default_server  表示这个server块作为默认的server块
+            backlog=num 表示TCP中backlog队列的大小，默认为-1，表示不予设置。
+
+            deferred ：在设置该参数后， 若用户发起建立连接请求， 并且完成了TCP的三次握手，
+                       内核也不会为了这次的连接调度worker进程来处理， 只有用户真的发送请求数据时（内核已
+                       经在网卡中收到请求数据包） ， 内核才会唤醒worker进程处理这个连接。 这个参数适用于大
+                       并发的情况下， 它减轻了worker进程的负担。 当请求数据来临时， worker进程才会开始处理
+                       这个连接。 只有确认上面所说的应用场景符合自己的业务需求时， 才可以使用deferred配
+                       置。
+
+            ssl: 在当前监听的端口上建立的连接必须基于ssl协议
+
+            重点：会截取nginx中请求的header中的host与server_name 匹配
+            匹配规则优先级规则：全名匹配，前缀匹配（*.testweb.com）,后缀匹配（www.testweb.*）,正则匹配
+
+
+        -文件路径的定义
+            (一) 以root方式设置资源路径
+                root path  使用的配置块：http server location if
+                例子： location /download/ {
+                        root /index/test.html
+                    }
+
+            (二) 以alias方式设置资源路径
+                alias path   使用配置块 location
+
+                如果有一个请求的URI是/conf/nginx.conf， 而用户实际想访问的文件
+                在usr/local/nginx/conf/nginx.conf， 那么想要使用alias来进行设置的话， 可以采用如下方式：
+                    location conf {
+                        alias usr/local/nginx/conf/;
+                    }
+                如果用root设置， 那么语句如下所示：
+                    location conf {
+                        root usr/local/nginx/;
+                    }
+
+        -内存及磁盘资源的分配
+            client_body_in_file_only  on|clean|off
+            client_body_in_single_buffer  on|off
+            client_header_buffer_size  size
+            large_client_header_buffers number size
+            client_body_buffer_size size
+            connection_pool_size
+                nginx对于每个建立成功的tcp会有一个预设的内存，size就是内存池的大小
+            request_pool_size
+                同上，每个请求也会分配内存
+
+            TCP连接关闭时会销毁connection_pool_size指定的连接内存池，
+            HTTP请求结束时会销毁request_pool_size指定的HTTP请求内存池
+
+        -网络连接的设置
+            client_header_timeout time  获取HTTP头部的超时时间
+            client_body_timeout time    获取HTTP包体的超时时间
+            send_timeout time           发送响应的超时时间
+
+
+
+        -MIME类型的设置
+            语法 type{...}
+                配置块：http server location
+
+
+                默认MIME type
+                语法：default_type MIME-type
+                默认：default_type text/plain
+                找不到  对应的mime 类型映射会到这个默认的映射中来
+
+        -对客户端请求的限制的配置项
+            1.按http方法名限制用户请求
+            语法：limit_except method {...}
+            配置块：location
+            limit_except GET {
+                allow 192.168.1.0/32;
+                deny all;
+            }
+            注意， 允许GET方法就意味着也允许HEAD方法。 因此， 上面这段代码表示的是禁止
+            GET方法和HEAD方法， 但其他HTTP方法是允许的。
+
+            2.http请求包体的最大值
+            client_max_body_size size
+
+            3.对请求限速
+            limit_rate speed  如：limit_rate 0; 此配置是对客户端限制每秒传输的字节数，默认为0，表示不限速
+
+            4.limit_rate_after
+            limit_rate_after 1m  配置表示nginx客户端的响应长度超过limit_rate_after后才打开限速
+
+
+        -文件操作的优化
+            1.sendfile 系统的调用
+            语法：sendfile on|off
+            默认：sendfile off  默认是关闭的
+
+     ???    2.AIO系统调用
+            aio on|off  默认关闭  与sendfile是互斥
+
+        -对客户端请求的特殊处理
+            1.忽略不合法的HTTP头部  ignore_invalid_headers on|off  默认 on
+                设置为off时，出现不合法头部会返回400错误
+            2.头部是否允许下划线  underscores_in_headers on|off  默认 off  表示头部不允许带 ‘_’
+            3.nerge_slashes on|off  例如：/test///a.txt
+                如果  on ===> location/test/a.txt
+                如果 off ===> location/test///a.txt
+            4.DNS解析地址
+                resolver address...;  设置dns名字解析服务器的地址   表示去那台服务器上去进行dns解析
+                超时时间的配置  resolver_timeout time
+
+
+    -负载均衡的基本配置
+        1.upstream 块
+        语法 upstream name {...}
+        配置块 http
+
+        upstream 块中定义了上游服务器的集群 ，便于反向代理中的 proxy_pass 使用
+            upstream backend {
+                server backend1.example.com;
+                server backend2.example.com;
+                server backend3.example.com;
+            }
+            server {
+                location / {
+                    proxy_pass http://backend;
+                }
+            }
+
+        2. server 块
+        server name [param]
+        配置块 upstream  用于指定一台上游服务器的名字，这个名字可以时域名，ip端口等
+        还能设置一些参数
+            参数：weight=number  配置向这个服务器转发的权重  默认是 1
+                 fail_timeout=time 表示该事件端内转发失败多少次后就认为上游服务器暂时不可用  默认10s
+                 max_fails=number  配合 fail_timeout  表示转发失败超过多少次后就认为服务器不可用  默认为1， =0时，不检查次数
+        upstream backend {
+            server backend1.example.com weight=5;
+            server 127.0.0.1:8080 max_fails=3 fail_timeout=30s;
+            server unix:/tmp/backend3;
+        }
+
+        3. ip_hash 不可与 weight 同时使用
+        upstream backend {
+            ip_hash;
+            server backend1.example.com;
+            server backend2.example.com;
+            server backend3.example.com down;
+            server backend4.example.com;
+        }
+
+        4. 记录日志时支持的变量
+            $upstream_addr                处理请求的上游服务器地址
+            $upstream_cache_status        表示是否命中缓存
+            $upstream_status              上游服务器返回的HTTP响应码
+            $upstream_response_time       上游服务器的响应时间，精确到毫秒
+            $upstream_http_$HEADER        HTTP的头部 如 upstream_http_host
+
+
+    -反向代理的基本配置
+        1. proxy_pass url
+        2. proxy_method method
+        3. proxy_hide_header 任意指定那些http头部不被转发  proxy_hide_header Cache-Control;
+        4. proxy_pass_header 任意指定那些http头部能被转发
+
+=======================================================================
+        nginx  中 对buffer的设置
+        client_header_buffer_size  一个buffer多大
+        large_client_header_buffers  一组buffer   4 8k  表示有4个8k的buffer
+
+        nginx会将整个请求头都放在一个buffer里面，
+        这个buffer的大小通过配置项client_header_buffer_size来设置，
+        如果用户的请求头太大，这个buffer装不下，那nginx就会重新分配一个新的更大的buffer来装请求头，
+        这个大buffer可以通过large_client_header_buffers来设置，这个large_buffer这一组buffer，
+        比如配置4 8k，就是表示有四个8k大小的buffer可以用。
+
+        注意，为了保存请求行或请求头的完整性，一个完整的请求行或请求头，需要放在一个连续的内存里面，
+        所以，一个完整的请求行或请求头，只会保存在一个buffer里面。这样，如果请求行大于一个buffer的大小，就会返回414错误，
+        如果一个请求头大小大于一个buffer大小，就会返回400错误。
+        在了解了这些参数的值，以及nginx实际的做法之后，在应用场景，我们就需要根据实际的需求来调整这些参数，来优化我们的程序了
+
+        lingering_close  延迟关闭  当nginx要关闭连接时，并非立即关闭连接，
+        而是先关闭tcp连接的写，在等待一段时间后关闭连接的读。
+
+
+
+        nginx location机制
+        location[ = | ~ | ~* | ^~ | @ ]/uri/ {...}
+        先最长前缀匹配，记录匹配到的值，然后进行正则匹配，如果正则匹配到  使用正则匹配，否则使用之前记录的最长匹配
+        如果有设置 ^~ 参数，就只用最长匹配。
+        =  精确匹配
+        ~  区分大小写正则匹配
+        ~* 不区分大小写正则匹配
+        ^~ 不进行正则匹配
+        @  仅用于nginx内部请求之间的重定向
+
+
+        nginx 配置下载目录
+        在原有的nginx配置文件中添加location模块
+
+
+
+============================================================
+        nginx请求的11个阶段
+
+        typedef enum {
+            ngx_http_post_read_phase = 0;
+            ngx_http_server_rewrite_phase
+            ngx_http_find_config_phase         // 根据uri寻找匹配的location块配置项
+            ngx_http_rewrite_phase
+            ngx_http_post_rewrite_phase
+
+            ngx_http_preaccess_phase           // 下一阶段之前的准备
+
+            ngx_http_access_phase              // 让http模块判断  是否让请求进入nginx服务器
+            ngx_http_post_access_phase         // 向用户发送拒绝服务错误码，响应上一阶段的拒绝
+
+            ngx_http_try_files_phase
+            ngx_http_content_phase             // 处理请求内容阶段   大部分http模块介入这个阶段
+
+            ngx_http_log_phase
+        }
+
+
+        --preaccess 阶段 限制连接的命令    limit_req  --->  limit_conn
+            定义共享内存的大小  limit_conn_zone key zone=name:size;
+            只在http中使用
+
+            限制并发连接数  limit_conn zone number (这里的zone就是上面定义的 zone=name)
+            使用范围在  http server location
+
+            limit_conn_log_level  info|notice|varn|error   日志级别
+
+            limit_conn_status  code   连接超过限制时向客户端返回的错误码
+
+        -- access 模块   控制请求可以继续向下访问  针对ip等做限制
+            allow   ip，域名等
+            deny    ip，域名等
+
+
+
+
+    GoAccess  日志可视化工具
+
+    将站点变为https
+        yun install python2-certbot-nginx
+
+        certbot --nginx [--nginx-server-root=PATH 指定conf目录，默认为conf默认路径] -d www.liurunshi.com
+
+        信号：
+            master
+            worker
+            命令行
+
+        优雅关闭主要是http请求   worker_shutdown_timeout
+        TCP UDP SOCKET等不知道什么时候结束
+
+        epoll  网络事件收集器  就是讲网络事件添加到内核的事件队列中，等待事件处理程序来获取事件并处理
+
+        slab内存管理
+        动态模块管理   编译模块进入nginx时，指定模块时动态模块
+        在nginx中调用该模块的地方只是占位，具体的逻辑需要去动态库中去找，所以动态编译nginx时会多出一个文件夹，存放动态库的。
+
+
+
+
+
+
+=============================================================
+    nginx基础数据结构
+        ngx_str_t:
+            typedef struct {
+                size_t  len;
+                u_char  *data;
+            } ngx_str_t;
