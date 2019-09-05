@@ -1,0 +1,4 @@
+一.为什么String在java中是final类型的？
+	① String对象在java中有缓存池存在，如果String可以被客户改变，会导致所有客户都能看到这一改变。
+		String A = "Test";  String b = "Test";    对B进行改变 => TEST, 取出A，发现 A=TEST;
+	

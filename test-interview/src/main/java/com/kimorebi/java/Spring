@@ -1,0 +1,41 @@
+一.在Spring中如何解决循环依赖？
+
+Spring是通过递归的方式获取目标bean及其所依赖的bean的；
+Spring实例化一个bean的时候，是分两步进行的，首先实例化目标bean，然后为其注入属性。
+
+	/** 例子 */
+	@Component
+	public class A {
+	
+	  private B b;
+	
+	  public void setB(B b) {
+	    this.b = b;
+	  }
+	}
+	@Component
+	public class B {
+	
+	  private A a;
+	
+	  public void setA(A a) {
+	    this.a = a;
+	  }
+	}
+
+	这里我们以上面的首先初始化A对象实例为例进行讲解。
+	首先Spring尝试通过ApplicationContext.getBean()方法获取A对象的实例，
+	由于Spring容器中还没有A对象实例，因而其会创建一个A对象，然后发现其依赖了B对象，
+	因而会尝试递归的通过ApplicationContext.getBean()方法获取B对象的实例，
+	但是Spring容器中此时也没有B对象的实例，因而其还是会先创建一个B对象的实例。
+	读者需要注意这个时间点，此时A对象和B对象都已经创建了，并且保存在Spring容器中了，
+	只不过A对象的属性b和B对象的属性a都还没有设置进去。在前面Spring创建B对象之后，
+	Spring发现B对象依赖了属性A，因而此时还是会尝试递归的调用ApplicationContext.getBean()方法获取A对象的实例，
+	因为Spring中已经有一个A对象的实例，虽然只是半成品（其属性b还未初始化），
+	但其也还是目标bean，因而会将该A对象的实例返回。
+	此时，B对象的属性a就设置进去了，然后还是ApplicationContext.getBean()方法递归的返回，
+	也就是将B对象的实例返回，此时就会将该实例设置到A对象的属性b中。
+	这个时候，注意A对象的属性b和B对象的属性a都已经设置了目标对象的实例了。
+	
+	
+	
